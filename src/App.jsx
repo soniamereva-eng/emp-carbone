@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// 🔹 Configure ton client Supabase ici
+
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -9,77 +9,97 @@ const supabase = createClient(
 
 export default function App() {
   const [session, setSession] = useState(null);
-  const [hours, setHours] = useState(8);
+  const [hours, setHours] = useState("");
   const [co2, setCo2] = useState(null);
 
+ 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
+
+    return () => listener.subscription.unsubscribe();
   }, []);
 
-  async function signIn() {
-    const email = prompt("Entrez votre email professionnel :");
-    if (!email) return;
 
-    await supabase.auth.signInWithOtp({ email });
-    alert("Lien de connexion envoyé 👌");
+  async function signIn() {
+    await supabase.auth.signInWithPassword({
+      email: prompt("Email :"),
+      password: prompt("Mot de passe :"),
+    });
   }
 
+  // 🔚 Logout
   async function signOut() {
     await supabase.auth.signOut();
   }
 
-  async function saveToSupabase(value) {
-    if (!session) return;
+ 
+  function calculateCo2(hours) {
+    return (hours * 0.055).toFixed(3);
+  }
 
-    await supabase.from("sessions").insert({
+  
+  async function submitHours() {
+    if (!hours) return alert("Entre un nombre d’heures !");
+    const value = calculateCo2(hours);
+
+    const { error } = await supabase.from("empreinte").insert({
       user_id: session.user.id,
-      duration_seconds: hours * 3600,
-      estimated_kwh: value / 1000,
-      co2_g: value
+      hours: hours,
+      co2: value,
+      created_at: new Date(),
     });
 
-    alert("Données enregistrées ✔️");
+    if (error) {
+      console.error(error);
+      return alert("Erreur lors de l’enregistrement");
+    }
+
+    setCo2(value);
+    alert("Enregistré !");
   }
 
-  function calculate() {
-    const grams = hours * 50; // 🔹 50 gCO2/h par défaut (simplifié)
-    setCo2(grams);
-    saveToSupabase(grams);
-  }
-
-  if (!session)
+ 
+  if (!session) {
     return (
-      <div style={{ padding: 20 }}>
-        <h2>Connexion</h2>
+      <div style={{ padding: 30 }}>
+        <h2>Connexion requise</h2>
         <button onClick={signIn}>Se connecter</button>
       </div>
     );
+  }
+
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Bienvenue</h2>
+    <div style={{ padding: 30 }}>
+      <h1>Empreinte carbone - Télétravail</h1>
+
+      <p>Utilisateur : {session.user.email}</p>
       <button onClick={signOut}>Se déconnecter</button>
 
-      <h3>Calcul de l'empreinte carbone</h3>
+      <hr />
 
-      <label>Heures travaillées aujourd’hui :</label>
+      <label>Heures de télétravail :</label>
       <input
         type="number"
         value={hours}
         onChange={(e) => setHours(e.target.value)}
+        placeholder="ex: 8"
+        style={{ marginLeft: 10 }}
       />
 
-      <button onClick={calculate}>Calculer</button>
+      <button onClick={submitHours} style={{ marginLeft: 10 }}>
+        Enregistrer
+      </button>
 
-      {co2 !== null && (
+      {co2 && (
         <p>
-          Empreinte estimée : <strong>{co2} g CO₂</strong>
+          Empreinte CO₂ calculée : <strong>{co2} kg</strong>
         </p>
       )}
     </div>
