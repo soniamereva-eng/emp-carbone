@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// Supabase sera configuré avec les env vars Vercel
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -12,22 +11,52 @@ export default function App() {
   const [hours, setHours] = useState("");
   const [co2, setCo2] = useState(null);
 
+  // NEW:
+  const [history, setHistory] = useState([]);
+  const [monthlyTotal, setMonthlyTotal] = useState(0);
+
+  // Charger l'historique
+  async function loadHistory(activeSession) {
+    if (!activeSession?.user) return;
+
+    const { data, error } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("user_id", activeSession.user.id)
+      .order("session_start", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setHistory(data);
+
+    // total du mois
+    const currentMonth = new Date().getMonth();
+    const total = data
+      .filter(s => new Date(s.session_start).getMonth() === currentMonth)
+      .reduce((acc, s) => acc + s.co2_g / 1000, 0);
+
+    setMonthlyTotal(total.toFixed(3));
+  }
+
+  // Auth listener
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
+      if (data.session) loadHistory(data.session);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      if (newSession) loadHistory(newSession);
     });
 
-    return () => {
-      try { listener.subscription.unsubscribe(); } catch (e) { /* ignore */ }
-    };
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   async function signIn() {
-    // magic link flow simple (email)
     const email = prompt("Email :");
     if (!email) return;
     const { error } = await supabase.auth.signInWithOtp({ email });
@@ -53,7 +82,7 @@ export default function App() {
       display_name: session.user.email,
       duration_seconds: Number(hours) * 3600,
       estimated_kwh: (Number(hours) * 0.05) / 1000,
-      co2_g: Number(value) * 1000, // store in grams
+      co2_g: Number(value) * 1000,
       session_start: new Date().toISOString(),
       session_end: new Date().toISOString()
     });
@@ -65,6 +94,7 @@ export default function App() {
 
     setCo2(value);
     alert("Enregistré !");
+    loadHistory(session);
   }
 
   if (!session) {
@@ -101,6 +131,30 @@ export default function App() {
           Empreinte CO₂ estimée : <strong>{co2} kg</strong>
         </p>
       )}
+
+      <hr />
+
+      <h2>Historique</h2>
+      <p>Total CO₂ du mois : <strong>{monthlyTotal} kg</strong></p>
+
+      <table border="1" cellPadding="8" style={{ marginTop: 10 }}>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Heures</th>
+            <th>CO₂ (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {history.map((h) => (
+            <tr key={h.id}>
+              <td>{new Date(h.session_start).toLocaleDateString()}</td>
+              <td>{(h.duration_seconds / 3600).toFixed(1)}</td>
+              <td>{(h.co2_g / 1000).toFixed(3)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
