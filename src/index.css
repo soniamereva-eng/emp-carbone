@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* petites personnalisations */
+:root {
+  --brand: #2563eb; /* bleu */
+}
+html.dark {
+  --bg: #0b1220;
+  --card: #0f1724;
+  --text: #e6eef8;
+}
+html {
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --text: #0f1724;
+  background-color: var(--bg);
+  color: var(--text);
+}
