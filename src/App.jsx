@@ -1,12 +1,7 @@
-import { Routes, Route } from "react-router-dom";
-import Login from "./pages/Login.jsx";
-import Admin from "./pages/Admin.jsx";
-
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Login />} />
-      <Route path="/admin" element={<Admin />} />
-    </Routes>
+    <div style={{ padding: 40, fontSize: 24 }}>
+      ✅ APP FUNCTIONNE
+    </div>
   );
 }
