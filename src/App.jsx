@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
-import Login from "./pages/Login";
-import Admin from "./pages/Admin";
+import Login from "./pages/Login.jsx";
+import Admin from "./pages/Admin.jsx";
 
 export default function App() {
   return (
