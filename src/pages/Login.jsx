@@ -1,29 +1,14 @@
-import { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-
-  const handleLogin = async (e) => {
-    e.preventDefault()
-
-    await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: import.meta.env.VITE_SITE_URL
-      }
-    })
-  }
+  const navigate = useNavigate();
 
   return (
-    <form onSubmit={handleLogin}>
-      <input
-        type="email"
-        placeholder="email@exemple.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <button type="submit">Se connecter</button>
-    </form>
-  )
+    <div>
+      <h1>Login</h1>
+      <button onClick={() => navigate("/admin")}>
+        Entrer
+      </button>
+    </div>
+  );
 }
